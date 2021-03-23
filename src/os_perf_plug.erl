@@ -8,17 +8,29 @@ attributes(PrevState) ->
 
 sheet_header() ->
     [
-     #{title => "Header_1", width => 34},
-     #{title => "Header_2", width => 34},
-     #{title => "Header_3", width => 34}
+     #{title => "# samples", width => 25},
+     #{title => "top of the call stack", width => 100}
     ].
 
 sheet_body(PrevState) ->
-    SheetBody = [
-                 [row1hd1, row1hd2, row1hd3],
-                 [row2hd1, row2hd2, row2hd3],
-                 [row3hd1, row3hd2, row3hd3],
-                 [row4hd1, row4hd2, row4hd3],
-                 [row5hd1, row5hd2, row5hd3]
-                ],
+    OSPid = os:getpid(),
+    Cmd = io_lib:format("sudo /usr/share/bcc/tools/profile -F 4000 -f -p ~s 1", [OSPid]),
+    Result = os:cmd(Cmd),
+
+    M = lists:foldl(fun([Stack, Num], Map) ->
+                            maps:update_with(Stack, fun(V) -> V + Num end, Num, Map)
+                    end,
+                    #{},
+                    lists:sort(lists:map(fun(Line) ->
+                                                 case string:tokens(Line, " ") of
+                                                     [Stack, Num] -> [string:tokens(Stack, ";"), list_to_integer(Num)];
+                                                     _ -> [Line, -1]
+                                                 end
+                                         end,
+                                         string:tokens(Result, "\n")
+                                        )
+                              )
+                   ),
+    SheetBody = lists:map(fun({Stack, Num}) -> [Num, lists:last(Stack)] end, maps:to_list(M)),
+
     {SheetBody, PrevState}.
