@@ -1,4 +1,4 @@
--module(os_perf_plug).
+-module(elab_bcc_profile_plugin).
 
 -define(RESET_BG, <<"\e[49m">>).
 -define(RESET, <<"\e[0m">>).
