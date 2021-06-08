@@ -1,12 +1,21 @@
-# elab processes
+# elab processes and ports (elab_procs.erl)
 
 ## Preparations
+
+```elixir
+Mix.install([
+  {:vega_lite, "~> 0.1.0"},
+  {:kino, "~> 0.1.0"}
+])
+
+alias VegaLite, as: Vl
+```
 
 In order to inspect a BEAM-based service, we first need to connect to the target Erlang node.
 
 Before evaluating the next section, ensure **livebook** and **target** nodes share the same cookie
 
-`$ livebook server --cookie my-erlang-cookie`
+`$ livebook server --cookie my-cookie`
 
 ```elixir
 # set the target node name
@@ -39,30 +48,45 @@ If the target node is running Elixir, you can visit the [Phoenix LiveDashboard](
 
 ## Processes scatter plot
 
-A scatterplot showing reductions and memory per process that opens a LiveDashboard for the pid that you click on.
+A scatter plot showing reductions and memory per process.
+
+Clicking a process can open a LiveDashboard.
 
 ```elixir
-Mix.install([
-  {:vega_lite, "~> 0.1.0"},
-  {:kino, "~> 0.1.0"}
-])
+%{:procs => procs} = :rpc.call(node, :elab_procs, :info, [])
 
-alias VegaLite, as: Vl
-```
-
-```elixir
-%{:procs => procs, :ports => ports} = :rpc.call(node, :elab_procs, :info, [])
-
-vl_widget =
-  Vl.new(width: 400, height: 400)
+vl_procs =
+  Vl.new(width: 500, height: 400)
   |> Vl.data_from_values(procs)
   |> Vl.mark(:point, tooltip: true)
   |> Vl.encode_field(:x, "reductions", type: :quantitative, scale: [type: "log", base: 10])
   |> Vl.encode_field(:y, "memory", type: :quantitative, scale: [type: "log", base: 10])
   |> Vl.encode_field(:color, "state", type: :nominal)
   |> Vl.encode_field(:tooltip, "pid", type: :nominal)
+  |> Vl.transform(calculate: "'/dashboard/" <> "#{node}" <> "/processes'", as: "url")
+  |> Vl.encode_field(:href, "url", type: :nominal)
 
 # |> Vl.encode_field(:size, "stack_heap_size", type: :quantitative)
-# |> Vl.transform(calculate: "'/dashboard/" <> Atom.to_string(node) <> "/processes?info=' + datum.pid", as: "url")
-# |> Vl.encode_field(:href, "url", type: :nominal)
+```
+
+## Ports scatter plot
+
+A scatter plot showing input and output per port that opens a LiveDashboard for the clicked port.
+
+```elixir
+%{:ports => ports} = :rpc.call(node, :elab_procs, :info, [])
+IO.inspect(length(ports))
+
+vl_ports =
+  Vl.new(width: 500, height: 400)
+  |> Vl.data_from_values(ports)
+  |> Vl.mark(:point, tooltip: true)
+  |> Vl.encode_field(:x, "input", type: :quantitative, scale: [type: "log", base: 10])
+  |> Vl.encode_field(:y, "output", type: :quantitative, scale: [type: "log", base: 10])
+  |> Vl.encode_field(:color, "state", type: :nominal)
+  |> Vl.encode_field(:tooltip, "port", type: :nominal)
+  |> Vl.transform(calculate: "'/dashboard/" <> "#{node}" <> "/ports'", as: "url")
+  |> Vl.encode_field(:href, "url", type: :nominal)
+
+# |> Vl.encode_field(:size, "queue", type: :quantitative)
 ```

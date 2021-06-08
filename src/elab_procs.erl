@@ -85,8 +85,9 @@ parse_dump_proc([<<"Dictionary: ", Dictionary/binary>> | T], Map, MP) ->
 parse_dump_proc([<<"Link list: ", Links/binary>> | T], Map, MP) ->
     parse_dump_proc(T, Map#{links => Links}, MP);
 parse_dump_proc([<<"Reductions: 0">> | T], Map, MP) ->
-    % special case of a just spawned process
-    parse_dump_proc(T, Map#{reductions => 1}, MP);
+    % a special case of zero reductions of the just spawned process
+    % zeros don't work well with a logarithmic scale, so make it 1
+    parse_dump_proc(T, Map#{reductions => <<"1">>}, MP);
 parse_dump_proc([<<"Reductions: ", Reductions/binary>> | T], Map, MP) ->
     parse_dump_proc(T, Map#{reductions => Reductions}, MP);
 parse_dump_proc([<<"Stack+heap: ", StackHeapSize/binary>> | T], Map, MP) ->
@@ -164,6 +165,11 @@ parse_dump_port([<<"Port Data: ", PortData/binary>> | T], Map) ->
     parse_dump_port(T, Map#{port_data => PortData});
 parse_dump_port([<<"Port ", _/binary>> = Desc | T], Map) ->
     parse_dump_port(T, Map#{desc => Desc});
+% zeros don't work well with a logarithmic scale, so make it 1
+parse_dump_port([<<"Input: 0">> | T], Map) ->
+    parse_dump_port(T, Map#{input => <<"1">>});
+parse_dump_port([<<"Output: 0">> | T], Map) ->
+    parse_dump_port(T, Map#{output => <<"1">>});
 parse_dump_port([<<"Input: ", Input/binary>> | T], Map) ->
     parse_dump_port(T, Map#{input => Input});
 parse_dump_port([<<"Output: ", Output/binary>> | T], Map) ->
