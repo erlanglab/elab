@@ -1,0 +1,68 @@
+# elab processes
+
+## Preparations
+
+In order to inspect a BEAM-based service, we first need to connect to the target Erlang node.
+
+Before evaluating the next section, ensure **livebook** and **target** nodes share the same cookie
+
+`$ livebook server --cookie my-erlang-cookie`
+
+```elixir
+# set the target node name
+# ! EDIT THE NEXT LINE IF NEEDED !
+node = :smok@wawel
+
+# determine names of the two livebook nodes
+livebook1 = :erlang.node()
+[livebook2 | _] = :erlang.nodes(:connected)
+
+[node, livebook1, livebook2]
+```
+
+## Connecting to the target node
+
+If cookies are the same and networking is in place, we should be able to connect the **target** node to the two **Livebook** nodes. This will allow us to inspect the BEAM-based system.
+
+It should evaluate to a list of nodes including the target node name and one of the livebook nodes.
+
+```elixir
+# connect local livebook node to the target node
+true = :net_kernel.connect_node(node)
+# connect the target node to the second livebook node
+true = :rpc.call(node, :net_kernel, :connect_node, [livebook2])
+
+:erlang.nodes(:connected)
+```
+
+If the target node is running Elixir, you can visit the [Phoenix LiveDashboard](/dashboard/home) and select the target node from the top right menu.
+
+## Processes scatter plot
+
+A scatterplot showing reductions and memory per process that opens a LiveDashboard for the pid that you click on.
+
+```elixir
+Mix.install([
+  {:vega_lite, "~> 0.1.0"},
+  {:kino, "~> 0.1.0"}
+])
+
+alias VegaLite, as: Vl
+```
+
+```elixir
+%{:procs => procs, :ports => ports} = :rpc.call(node, :elab_procs, :info, [])
+
+vl_widget =
+  Vl.new(width: 400, height: 400)
+  |> Vl.data_from_values(procs)
+  |> Vl.mark(:point, tooltip: true)
+  |> Vl.encode_field(:x, "reductions", type: :quantitative, scale: [type: "log", base: 10])
+  |> Vl.encode_field(:y, "memory", type: :quantitative, scale: [type: "log", base: 10])
+  |> Vl.encode_field(:color, "state", type: :nominal)
+  |> Vl.encode_field(:tooltip, "pid", type: :nominal)
+
+# |> Vl.encode_field(:size, "stack_heap_size", type: :quantitative)
+# |> Vl.transform(calculate: "'/dashboard/" <> Atom.to_string(node) <> "/processes?info=' + datum.pid", as: "url")
+# |> Vl.encode_field(:href, "url", type: :nominal)
+```
