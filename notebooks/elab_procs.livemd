@@ -5,7 +5,8 @@
 ```elixir
 Mix.install([
   {:vega_lite, "~> 0.1.0"},
-  {:kino, "~> 0.1.0"}
+  {:kino, "~> 0.1.0"},
+  {:elab, "~> 0.1.0"}
 ])
 
 alias VegaLite, as: Vl
@@ -53,7 +54,9 @@ A scatter plot showing reductions and memory per process.
 Clicking a process can open a LiveDashboard.
 
 ```elixir
-%{:procs => procs} = :rpc.call(node, :elab_procs, :info, [])
+info = :rpc.call(node, :erlang, :system_info, [:procs])
+%{:procs => procs, :ports => ports} = :elab_procs.parse(info)
+IO.inspect(length(procs))
 
 vl_procs =
   Vl.new(width: 500, height: 400)
@@ -71,10 +74,11 @@ vl_procs =
 
 ## Ports scatter plot
 
-A scatter plot showing input and output per port that opens a LiveDashboard for the clicked port.
+A scatter plot showing input and output per port.
+
+Clicking a port can open a LiveDashboard, which has two tabs related to ports - **Ports** and **Sockets**.
 
 ```elixir
-%{:ports => ports} = :rpc.call(node, :elab_procs, :info, [])
 IO.inspect(length(ports))
 
 vl_ports =
